@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Tá Aqui!</title>
 <style>
+/* --- estilo original mantido, com pequenas regras responsivas adicionadas --- */
 body {
   font-family: 'Poppins', sans-serif;
   background: linear-gradient(to bottom right, #f2f7ff, #e8f0ff);
@@ -83,6 +84,18 @@ footer { margin-top: 40px; display: flex; flex-direction: column; align-items: c
 .gear-btn:hover { color: #1fddff; }
 .text-edit input { width: 100%; margin: 5px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
 .text-edit label { font-weight: bold; display: block; margin-top: 10px; }
+
+/* --- RESPONSIVIDADE (adicionadas) --- */
+@media (max-width: 600px) {
+  body { padding: 14px; }
+  h1 { font-size: 2.2rem; }
+  .pagination button, .btn { padding: 10px 16px; font-size: 0.95rem; border-radius: 20px; width: 100%; max-width: 360px; }
+  .result-item { padding: 12px 14px; font-size: 0.95rem; }
+  .edit-list input { width: 48px; }
+  .gear-btn { font-size: 1.6rem; top: 8px; right: 8px; }
+  .text-edit { padding: 0 10px; }
+  input[type="text"], input[type="password"], input[type="email"], input[type="tel"] { padding: 12px 14px; font-size: 0.95rem; }
+}
 </style>
 </head>
 <body>
@@ -166,13 +179,14 @@ footer { margin-top: 40px; display: flex; flex-direction: column; align-items: c
 </div>
 
 <script>
+/* --- Mantive as variáveis e funções iguais, mas troquei localStorage por chamadas à API /api/texts --- */
 const masterPassword="Pedrokong3535#";
 const resultsPerPage=5;
 let contacts = [];
 let editingIndex = null;
 let currentPage = 1;
 
-// Textos fixos
+// Textos fixos (carregados via API)
 const defaultTexts={
   title:"Tá Aqui!",
   subtitle:"procure pessoas, negócios, emprego ou palavras",
@@ -181,9 +195,9 @@ const defaultTexts={
   placeholderSearch:"Digite o que procura...",
   footer:"Mais informações ou saber como ficar melhor ranqueado na pesquisa,\nentre em contato pelo WhatsApp (54) 98421-4457"
 };
-let texts=JSON.parse(localStorage.getItem("siteTexts"))||{...defaultTexts};
+let texts = { ...defaultTexts };
 
-async function saveTextsToStorage(){localStorage.setItem("siteTexts",JSON.stringify(texts)); updateSiteTexts();}
+/* Atualiza textos no DOM */
 function updateSiteTexts(){
   document.getElementById("site-title").textContent=texts.title;
   document.getElementById("site-subtitle").textContent=texts.subtitle;
@@ -193,7 +207,22 @@ function updateSiteTexts(){
   document.getElementById("rodape-texto").innerHTML=texts.footer.replace(/\n/g,'<br>');
 }
 
-// ------------------------ PESQUISA ------------------------
+/* Carrega textos do servidor */
+async function loadSiteTexts(){
+  try{
+    const res = await fetch('/api/texts');
+    if(!res.ok) throw new Error('Erro ao carregar textos');
+    const data = await res.json();
+    texts = { ...defaultTexts, ...data };
+  }catch(e){
+    console.warn('Não foi possível obter textos do servidor, usando padrão.', e);
+    texts = { ...defaultTexts };
+  } finally {
+    updateSiteTexts();
+  }
+}
+
+/* ------------------------ PESQUISA ------------------------ */
 async function search(){
   const query=document.getElementById("search").value.toLowerCase().trim();
   try{
@@ -204,7 +233,6 @@ async function search(){
     displayResults(contacts);
   }catch(e){
     console.error('Erro na busca', e);
-    // fallback to local contacts if any
     displayResults(contacts);
   }
 }
@@ -214,7 +242,7 @@ function displayResults(filtered){
   const paginationDiv=document.getElementById("pagination");
   resultsDiv.innerHTML="";
   paginationDiv.innerHTML="";
-  const totalPages=Math.ceil(filtered.length/resultsPerPage);
+  const totalPages=Math.max(1, Math.ceil(filtered.length/resultsPerPage));
   const start=(currentPage-1)*resultsPerPage;
   const end=start+resultsPerPage;
   filtered.slice(start,end).forEach((item,index)=>{
@@ -223,7 +251,7 @@ function displayResults(filtered){
     if(item.vaga && item.vaga.trim()!==""){
       div.textContent=`${item.vaga}\n${item.nome || ''} ${item.endereco ? '- '+item.endereco : ''} ${item.cidade ? '- '+item.cidade : ''} ${item.telefone ? '- '+item.telefone : ''} ${item.email ? '- '+item.email : ''}`;
     } else {
-      div.textContent=item.name;
+      div.textContent=item.nome || item.name || '';
     }
     if(item.link) div.onclick=()=>window.open(item.link,"_blank");
     resultsDiv.appendChild(div);
@@ -239,7 +267,7 @@ function displayResults(filtered){
   }
 }
 
-// ------------------------ FORMULÁRIOS ------------------------
+/* ------------------------ FORMULÁRIOS ------------------------ */
 function openForm(){
   document.getElementById("main-section").classList.add("hidden");
   document.getElementById("form-section").classList.remove("hidden");
@@ -250,7 +278,6 @@ function openForm(){
 
 async function salvarContato(){
   const senhaInput=document.getElementById("senha").value;
-  // basic duplicate check via API would be expensive; we'll just post
   const data={
     senha:senhaInput,
     nome:document.getElementById("nome").value,
@@ -260,13 +287,12 @@ async function salvarContato(){
     cidade:document.getElementById("cidade").value,
     vaga:document.getElementById("vaga").value,
     link:document.getElementById("link").value,
-    prioridade:editingIndex!==null?contacts[editingIndex].prioridade:5,
+    prioridade:editingIndex!==null && contacts[editingIndex] ? contacts[editingIndex].prioridade || 5 : 5,
     ativo:true
   };
   try{
     let res;
     if(editingIndex!==null && contacts[editingIndex] && contacts[editingIndex].id){
-      // update existing
       res = await fetch('/api/contacts/'+contacts[editingIndex].id, {
         method:'PUT',
         headers:{'Content-Type':'application/json'},
@@ -298,7 +324,7 @@ async function salvarContato(){
   }
 }
 
-// ------------------------ PAINEL ADMIN ------------------------
+/* ------------------------ PAINEL ADMIN ------------------------ */
 function openEdit(){
   document.getElementById("main-section").classList.add("hidden");
   document.getElementById("edit-login").classList.remove("hidden");
@@ -312,7 +338,6 @@ function openEdit(){
 async function validarSenha() {
   const nome = document.getElementById("nomeLogin").value.trim();
   const senha = document.getElementById("senhaLogin").value;
-  // master check handled by server
   try{
     const res = await fetch('/api/login', {
       method:'POST',
@@ -326,7 +351,6 @@ async function validarSenha() {
     }
     const data = await res.json();
     if(data.admin){
-      // admin: load all
       const all = await fetch('/api/contacts');
       const list = await all.json();
       document.getElementById("gearBtn").classList.remove("hidden");
@@ -337,9 +361,7 @@ async function validarSenha() {
       document.getElementById("senhaLogin").value = "";
       return;
     } else {
-      // user: open own contact for edit
       const c = data.contact;
-      // find index in current contacts list
       const all = await fetch('/api/contacts');
       const list = await all.json();
       const idx = list.findIndex(x=>x.id===c.id);
@@ -349,7 +371,6 @@ async function validarSenha() {
         editingIndex = idx;
         loadContact(idx);
       } else {
-        // open form with user's data
         contacts = list;
         renderEditList(contacts);
         const found = list.find(x=>x.id===c.id);
@@ -365,35 +386,35 @@ async function validarSenha() {
 
 function quickFilter(){
   const query=document.getElementById("quickSearch").value.toLowerCase();
-  const filtered=contacts.filter(c=>c.name.toLowerCase().includes(query));
+  const filtered=contacts.filter(c=> (c.nome || '').toLowerCase().includes(query) );
   renderEditList(filtered);
 }
 
-// ------------------------ RENDER LIST ------------------------
+/* ------------------------ RENDER LIST ------------------------ */
 function renderEditList(list){ contacts = list || contacts;
   const editListDiv=document.getElementById("editList");
   editListDiv.innerHTML="";
   const isAdmin=list.length===contacts.length;
   list.forEach(c=>{
     const btn=document.createElement("button");
-    btn.textContent=c.name;
+    btn.textContent=c.nome || c.name || '';
     btn.onclick=()=>loadContact(contacts.indexOf(c));
 
     if(isAdmin){
       const priInput=document.createElement("input"); priInput.type="number"; priInput.min="0"; priInput.max="10"; priInput.value=c.prioridade||5;
       priInput.onclick=e=>e.stopPropagation();
-      priInput.onchange=e=>{c.prioridade=parseInt(priInput.value)||0; saveContactsToStorage(); renderEditList(list);};
+      priInput.onchange=e=>{ c.prioridade=parseInt(priInput.value)||0; updatePriorityOnServer(c.id, c.prioridade); renderEditList(list); };
       btn.appendChild(priInput);
 
       const pauseBtn=document.createElement("span");
       pauseBtn.textContent=c.ativo!==false?"Pausar":"Ativar";
       pauseBtn.className="delete-btn"; pauseBtn.style.background="orange";
-      pauseBtn.onclick=e=>{e.stopPropagation(); c.ativo=!c.ativo; saveContactsToStorage(); renderEditList(list);};
+      pauseBtn.onclick=e=>{ e.stopPropagation(); toggleActiveOnServer(c.id, !c.ativo); c.ativo=!c.ativo; renderEditList(list); };
       btn.appendChild(pauseBtn);
 
       const del=document.createElement("span");
       del.textContent="Excluir"; del.className="delete-btn";
-      del.onclick=e=>{e.stopPropagation(); excluirContatoUsuario(contacts.indexOf(c));};
+      del.onclick=e=>{ e.stopPropagation(); excluirContatoUsuario(contacts.indexOf(c)); };
       btn.appendChild(del);
     }
 
@@ -401,47 +422,70 @@ function renderEditList(list){ contacts = list || contacts;
   });
 }
 
-// ------------------------ FUNÇÕES AUX ------------------------
-function excluirContatoUsuario(index){
-  if(confirm("Deseja realmente excluir este contato?")){
-    try{
-      const id = contacts[index] && contacts[index].id;
-      if(id){
-        const res = await fetch('/api/contacts/'+id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ masterName: 'pedro', masterPass: 'Pedrokong3535#' }) });
-        if(!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Erro ao excluir');
-        }
-        contacts.splice(index,1);
-        const msgDiv=document.getElementById("msg");
-        msgDiv.textContent="✅ Excluído com sucesso!";
-        msgDiv.style.color="#28a745";
-        msgDiv.classList.remove("hidden");
-        setTimeout(voltar,1500);
-      } else {
-        // fallback: remove locally
-        contacts.splice(index,1);
-        const msgDiv=document.getElementById("msg");
-        msgDiv.textContent="✅ Excluído localmente!";
-        msgDiv.style.color="#28a745";
-        msgDiv.classList.remove("hidden");
-        setTimeout(voltar,1500);
+/* ================= auxiliares que usam a API ================= */
+async function updatePriorityOnServer(id, prioridade){
+  try{
+    await fetch('/api/contacts/'+id, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prioridade })
+    });
+  }catch(e){ console.warn('Erro ao atualizar prioridade', e); }
+}
+
+async function toggleActiveOnServer(id, ativo){
+  try{
+    await fetch('/api/contacts/'+id, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ativo })
+    });
+  }catch(e){ console.warn('Erro ao alternar ativo', e); }
+}
+
+/* ------------------------ FUNÇÕES AUX ------------------------ */
+async function excluirContatoUsuario(index){
+  if(!confirm("Deseja realmente excluir este contato?")) return;
+  try{
+    const id = contacts[index] && contacts[index].id;
+    if(id){
+      const res = await fetch('/api/contacts/'+id, {
+        method:'DELETE',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ masterName: 'pedro', masterPass: masterPassword })
+      });
+      if(!res.ok){
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao excluir');
       }
-    }catch(e){
-      alert('Erro ao excluir: '+e.message);
+      contacts.splice(index,1);
+      const msgDiv=document.getElementById("msg");
+      msgDiv.textContent="✅ Excluído com sucesso!";
+      msgDiv.style.color="#28a745";
+      msgDiv.classList.remove("hidden");
+      setTimeout(voltar,1500);
+    } else {
+      contacts.splice(index,1);
+      const msgDiv=document.getElementById("msg");
+      msgDiv.textContent="✅ Excluído localmente!";
+      msgDiv.style.color="#28a745";
+      msgDiv.classList.remove("hidden");
+      setTimeout(voltar,1500);
     }
+  }catch(e){
+    alert('Erro ao excluir: '+e.message);
   }
 }
 
 function loadContact(i){
   editingIndex=i;
-  const c=contacts[i];
+  const c=contacts[i]||{};
   ["senha","nome","endereco","telefone","email","cidade","link","vaga"].forEach(id=>document.getElementById(id).value=c[id]||"");
   document.getElementById("form-section").classList.remove("hidden");
   document.getElementById("edit-login").classList.add("hidden");
 }
 
-// ------------------------ VOLTAR ------------------------
+/* ------------------------ VOLTAR ------------------------ */
 function voltar(){
   document.getElementById("form-section").classList.add("hidden");
   document.getElementById("edit-login").classList.add("hidden");
@@ -453,7 +497,7 @@ function voltar(){
   search();
 }
 
-// ------------------------ EDITAR TEXTOS ------------------------
+/* ------------------------ EDITAR TEXTOS ------------------------ */
 document.getElementById("gearBtn").onclick=function(){
   document.getElementById("edit-login").classList.add("hidden");
   document.getElementById("text-editor").classList.remove("hidden");
@@ -465,27 +509,41 @@ document.getElementById("gearBtn").onclick=function(){
   document.getElementById("edit-footer").value=texts.footer;
 }
 
-function salvarTextos(){
+async function salvarTextos(){
   texts.title=document.getElementById("edit-title").value;
   texts.subtitle=document.getElementById("edit-subtitle").value;
   texts.btnCadastrar=document.getElementById("edit-btn-cadastrar").value;
   texts.btnEditar=document.getElementById("edit-btn-editar").value;
   texts.placeholderSearch=document.getElementById("edit-placeholder-search").value;
   texts.footer=document.getElementById("edit-footer").value;
-  saveTextsToStorage();
-  alert("Alterações salvas com sucesso!");
+
+  try{
+    const res = await fetch('/api/texts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(texts)
+    });
+    if(!res.ok) throw new Error('Erro ao salvar textos');
+    alert("Alterações salvas com sucesso!");
+    updateSiteTexts();
+  }catch(e){
+    alert("Não foi possível salvar textos: "+e.message);
+  }
 }
 
 function restaurarPadrao(){
   texts={...defaultTexts};
-  saveTextsToStorage();
-  document.getElementById("edit-title").value=texts.title;
-  document.getElementById("edit-subtitle").value=texts.subtitle;
-  document.getElementById("edit-btn-cadastrar").value=texts.btnCadastrar;
-  document.getElementById("edit-btn-editar").value=texts.btnEditar;
-  document.getElementById("edit-placeholder-search").value=texts.placeholderSearch;
-  document.getElementById("edit-footer").value=texts.footer;
-  alert("Textos restaurados para padrão!");
+  // tenta salvar no servidor (se for admin, servidor aceitará)
+  fetch('/api/texts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(texts) }).finally(()=>{
+    document.getElementById("edit-title").value=texts.title;
+    document.getElementById("edit-subtitle").value=texts.subtitle;
+    document.getElementById("edit-btn-cadastrar").value=texts.btnCadastrar;
+    document.getElementById("edit-btn-editar").value=texts.btnEditar;
+    document.getElementById("edit-placeholder-search").value=texts.placeholderSearch;
+    document.getElementById("edit-footer").value=texts.footer;
+    alert("Textos restaurados para padrão!");
+    updateSiteTexts();
+  });
 }
 
 function fecharEditor(){
@@ -493,9 +551,9 @@ function fecharEditor(){
   document.getElementById("edit-login").classList.remove("hidden");
 }
 
-// ------------------------ INICIALIZAÇÃO ------------------------
+/* ------------------------ INICIALIZAÇÃO ------------------------ */
 window.onload=()=>{
-  updateSiteTexts();
+  loadSiteTexts();
   search();
 }
 </script>
