@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tá Aqui!</title>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(to bottom right, #f2f7ff, #e8f0ff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  color: #222;
+}
+h1 {
+  font-size: 3rem;
+  margin-bottom: 5px;
+  background: linear-gradient(90deg, #ff4b1f, #1fddff, #ffaf00, #39ff14);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: move 5s linear infinite;
+  background-size: 300%;
+  text-align: center;
+}
+@keyframes move { 0% { background-position: 0% } 100% { background-position: 100% } }
+p.subtitulo { color: #222; margin-bottom: 25px; font-size: 1rem; text-align: center; }
+input[type="text"], input[type="password"], input[type="email"], input[type="tel"], input[type="number"] {
+  width: 100%;
+  max-width: 100%;
+  padding: 15px 18px;
+  border-radius: 30px;
+  border: 2px solid #ccc;
+  outline: none;
+  font-size: 1rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: 0.3s;
+  margin-bottom: 10px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+input:focus { border-color: #1fddff; box-shadow: 0 4px 15px rgba(31,221,255,0.3); }
+.results { margin-top: 10px; width: 100%; max-width: 100%; display: flex; flex-direction: column; align-items: center; }
+.result-item { width: 100%; text-align: left; background: white; border-radius: 12px; padding: 15px 20px; margin: 5px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.5s ease; opacity: 0; transform: translateY(10px); white-space: pre-line; }
+.result-item.show { opacity: 1; transform: translateY(0); }
+.pagination { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; }
+.pagination button, .btn {
+  margin: 5px;
+  padding: 12px 25px;
+  border: none;
+  background: linear-gradient(90deg, #1fddff, #ff4b1f);
+  color: white;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: 0.5s;
+  font-size: 1rem;
+  background-size: 200% 200%;
+  animation: gradientMove 4s ease infinite;
+  text-align: center;
+}
+.pagination button:hover, .btn:hover { filter: brightness(1.1); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+.hidden { display: none; }
+.success { text-align: center; font-weight: bold; margin-top: 15px; }
+footer { margin-top: 40px; display: flex; flex-direction: column; align-items: center; }
+.edit-list input { width: 50px; margin-left: 10px; }
+.edit-list button { width: 100%; margin-bottom: 10px; text-align: left; padding: 10px; background: #f1f1f1; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.edit-list button:hover { background: #e0f7ff; }
+.delete-btn { background: red; color: white; border-radius: 8px; padding: 2px 6px; font-size: 0.9rem; cursor: pointer; margin-left: 5px; text-align: center; }
+@keyframes gradientMove { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
+.gear-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #555;
+}
+.gear-btn:hover { color: #1fddff; }
+.text-edit input { width: 100%; margin: 5px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+.text-edit label { font-weight: bold; display: block; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1 id="site-title">Tá Aqui!</h1>
+<p class="subtitulo" id="site-subtitle">procure pessoas, negócios, emprego ou palavras</p>
+
+<div id="main-section">
+  <input type="text" id="search" placeholder="Digite o que procura..." onkeyup="search()">
+  <div class="results" id="results"></div>
+  <div class="pagination" id="pagination"></div>
+  <footer>
+    <button class="btn" id="btn-cadastrar" onclick="openForm()">Cadastre seu contato aqui</button>
+    <button class="btn" id="btn-editar" onclick="openEdit()">Editar contato</button>
+    <div style="margin-top:10px;color:#555;text-align:center;" id="rodape-texto">
+      Mais informações ou saber como ficar melhor ranqueado na pesquisa,<br>
+      entre em contato pelo WhatsApp (54) 98421-4457
+    </div>
+  </footer>
+</div>
+
+<!-- Formulário principal -->
+<div id="form-section" class="form-section hidden">
+  <h2 style="text-align:center;">Cadastrar / Editar Contato</h2>
+  <input type="password" id="senha" placeholder="Crie uma senha" maxlength="50" required><br>
+  <input type="text" id="nome" placeholder="Nome completo ou nome do negócio (opcional)" maxlength="50"><br>
+  <input type="text" id="endereco" placeholder="Endereço (opcional)" maxlength="50"><br>
+  <input type="tel" id="telefone" placeholder="Telefone (opcional)" maxlength="50"><br>
+  <input type="email" id="email" placeholder="E-mail (opcional)" maxlength="50"><br>
+  <input type="text" id="cidade" placeholder="Cidade (opcional)" maxlength="50"><br>
+  <div style="text-align:center; font-size:0.9rem; color:#555; margin-bottom:5px;">
+    Exemplo: Emprego Erechim - Vaga para vendedor com experiência em vendas
+  </div>
+  <input type="text" id="vaga" placeholder="Vaga para emprego (opcional)" maxlength="50"><br>
+  <input type="text" id="link" placeholder="Link para rede social ou site (opcional)" maxlength="50"><br>
+  <div style="text-align:center;">
+    <button class="btn" onclick="salvarContato()">Salvar</button>
+    <button class="btn" style="margin-top:10px;background:gray;" onclick="voltar()">Voltar</button>
+  </div>
+  <div id="msg" class="success hidden"></div>
+</div>
+
+<!-- Login admin / editar contato -->
+<div id="edit-login" class="form-section hidden">
+  <h2 style="text-align:center;">Editar Contato</h2>
+  <input type="text" id="nomeLogin" placeholder="Nome cadastrado" maxlength="50"><br>
+  <input type="password" id="senhaLogin" placeholder="Senha" maxlength="50"><br>
+  <div id="quickSearchWrapper" class="hidden" style="text-align:center;margin-bottom:10px;">
+    <input type="text" id="quickSearch" placeholder="Buscar usuário..." onkeyup="quickFilter()" style="width:80%;padding:8px;border-radius:5px;border:1px solid #ccc;">
+  </div>
+  <div id="editList" class="edit-list hidden"></div>
+  <div class="gear-btn hidden" id="gearBtn" title="Editar textos do site">⚙️</div>
+  <div style="text-align:center;">
+    <button class="btn" onclick="validarSenha()">Acessar</button>
+    <button class="btn" style="margin-top:10px;background:gray;" onclick="voltar()">Voltar</button>
+  </div>
+</div>
+
+<!-- Editor de textos fixos -->
+<div id="text-editor" class="form-section hidden" style="max-width:600px;margin:20px auto;">
+  <h2 style="text-align:center;">Editar Textos Fixos do Site</h2>
+  <div class="text-edit">
+    <label for="edit-title">Título principal:</label>
+    <input type="text" id="edit-title"><br>
+    <label for="edit-subtitle">Subtítulo:</label>
+    <input type="text" id="edit-subtitle"><br>
+    <label for="edit-btn-cadastrar">Texto botão cadastrar:</label>
+    <input type="text" id="edit-btn-cadastrar"><br>
+    <label for="edit-btn-editar">Texto botão editar:</label>
+    <input type="text" id="edit-btn-editar"><br>
+    <label for="edit-placeholder-search">Placeholder pesquisa:</label>
+    <input type="text" id="edit-placeholder-search"><br>
+    <label for="edit-footer">Texto do rodapé:</label>
+    <input type="text" id="edit-footer"><br>
+  </div>
+  <div style="text-align:center; margin-top:10px;">
+    <button class="btn" onclick="salvarTextos()">Salvar Alterações</button>
+    <button class="btn" style="background:orange;" onclick="restaurarPadrao()">Restaurar Padrão</button>
+    <button class="btn" style="background:gray;" onclick="fecharEditor()">Voltar</button>
+  </div>
+</div>
+
+<script>
+const masterPassword="Pedrokong3535#";
+const resultsPerPage=5;
+let contacts = [];
+let editingIndex = null;
+let currentPage = 1;
+
+// Textos fixos
+const defaultTexts={
+  title:"Tá Aqui!",
+  subtitle:"procure pessoas, negócios, emprego ou palavras",
+  btnCadastrar:"Cadastre seu contato aqui",
+  btnEditar:"Editar contato",
+  placeholderSearch:"Digite o que procura...",
+  footer:"Mais informações ou saber como ficar melhor ranqueado na pesquisa,\nentre em contato pelo WhatsApp (54) 98421-4457"
+};
+let texts=JSON.parse(localStorage.getItem("siteTexts"))||{...defaultTexts};
+
+async function saveTextsToStorage(){localStorage.setItem("siteTexts",JSON.stringify(texts)); updateSiteTexts();}
+function updateSiteTexts(){
+  document.getElementById("site-title").textContent=texts.title;
+  document.getElementById("site-subtitle").textContent=texts.subtitle;
+  document.getElementById("btn-cadastrar").textContent=texts.btnCadastrar;
+  document.getElementById("btn-editar").textContent=texts.btnEditar;
+  document.getElementById("search").placeholder=texts.placeholderSearch;
+  document.getElementById("rodape-texto").innerHTML=texts.footer.replace(/\n/g,'<br>');
+}
+
+// ------------------------ PESQUISA ------------------------
+async function search(){
+  const query=document.getElementById("search").value.toLowerCase().trim();
+  try{
+    const res = await fetch('/api/contacts?q='+encodeURIComponent(query));
+    const data = await res.json();
+    contacts = data;
+    currentPage = 1;
+    displayResults(contacts);
+  }catch(e){
+    console.error('Erro na busca', e);
+    // fallback to local contacts if any
+    displayResults(contacts);
+  }
+}
+
+function displayResults(filtered){
+  const resultsDiv=document.getElementById("results");
+  const paginationDiv=document.getElementById("pagination");
+  resultsDiv.innerHTML="";
+  paginationDiv.innerHTML="";
+  const totalPages=Math.ceil(filtered.length/resultsPerPage);
+  const start=(currentPage-1)*resultsPerPage;
+  const end=start+resultsPerPage;
+  filtered.slice(start,end).forEach((item,index)=>{
+    const div=document.createElement("div");
+    div.className="result-item";
+    if(item.vaga && item.vaga.trim()!==""){
+      div.textContent=`${item.vaga}\n${item.nome || ''} ${item.endereco ? '- '+item.endereco : ''} ${item.cidade ? '- '+item.cidade : ''} ${item.telefone ? '- '+item.telefone : ''} ${item.email ? '- '+item.email : ''}`;
+    } else {
+      div.textContent=item.name;
+    }
+    if(item.link) div.onclick=()=>window.open(item.link,"_blank");
+    resultsDiv.appendChild(div);
+    setTimeout(()=>div.classList.add("show"),index*100);
+  });
+  if(totalPages>1){
+    for(let i=1;i<=totalPages;i++){
+      const btn=document.createElement("button");
+      btn.textContent=i;
+      btn.onclick=()=>{currentPage=i; displayResults(filtered);};
+      paginationDiv.appendChild(btn);
+    }
+  }
+}
+
+// ------------------------ FORMULÁRIOS ------------------------
+function openForm(){
+  document.getElementById("main-section").classList.add("hidden");
+  document.getElementById("form-section").classList.remove("hidden");
+  document.getElementById("msg").classList.add("hidden");
+  editingIndex=null;
+  ["senha","nome","endereco","telefone","email","cidade","link","vaga"].forEach(id=>document.getElementById(id).value="");
+}
+
+async function salvarContato(){
+  const senhaInput=document.getElementById("senha").value;
+  // basic duplicate check via API would be expensive; we'll just post
+  const data={
+    senha:senhaInput,
+    nome:document.getElementById("nome").value,
+    endereco:document.getElementById("endereco").value,
+    telefone:document.getElementById("telefone").value,
+    email:document.getElementById("email").value,
+    cidade:document.getElementById("cidade").value,
+    vaga:document.getElementById("vaga").value,
+    link:document.getElementById("link").value,
+    prioridade:editingIndex!==null?contacts[editingIndex].prioridade:5,
+    ativo:true
+  };
+  try{
+    let res;
+    if(editingIndex!==null && contacts[editingIndex] && contacts[editingIndex].id){
+      // update existing
+      res = await fetch('/api/contacts/'+contacts[editingIndex].id, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data)
+      });
+    } else {
+      res = await fetch('/api/contacts', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data)
+      });
+    }
+    if(!res.ok){
+      const err = await res.json();
+      throw new Error(err.error || 'Erro ao salvar');
+    }
+    const saved = await res.json();
+    document.getElementById("msg").textContent="✅ Contato salvo com sucesso!";
+    document.getElementById("msg").style.color="#28a745";
+    document.getElementById("msg").classList.remove("hidden");
+    document.getElementById("senha").value="";
+    setTimeout(voltar,1500);
+  }catch(e){
+    console.error(e);
+    const msgDiv=document.getElementById("msg");
+    msgDiv.textContent="⚠️ Erro ao salvar: "+e.message;
+    msgDiv.style.color="red";
+    msgDiv.classList.remove("hidden");
+  }
+}
+
+// ------------------------ PAINEL ADMIN ------------------------
+function openEdit(){
+  document.getElementById("main-section").classList.add("hidden");
+  document.getElementById("edit-login").classList.remove("hidden");
+  document.getElementById("nomeLogin").value="";
+  document.getElementById("senhaLogin").value="";
+  document.getElementById("gearBtn").classList.add("hidden");
+  document.getElementById("quickSearchWrapper").classList.add("hidden");
+  document.getElementById("editList").classList.add("hidden");
+}
+
+async function validarSenha() {
+  const nome = document.getElementById("nomeLogin").value.trim();
+  const senha = document.getElementById("senhaLogin").value;
+  // master check handled by server
+  try{
+    const res = await fetch('/api/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ nome, senha })
+    });
+    if(!res.ok){
+      const err = await res.json();
+      alert(err.error || 'Erro no login');
+      return;
+    }
+    const data = await res.json();
+    if(data.admin){
+      // admin: load all
+      const all = await fetch('/api/contacts');
+      const list = await all.json();
+      document.getElementById("gearBtn").classList.remove("hidden");
+      document.getElementById("quickSearchWrapper").classList.remove("hidden");
+      document.getElementById("editList").classList.remove("hidden");
+      renderEditList(list);
+      document.getElementById("nomeLogin").value = "";
+      document.getElementById("senhaLogin").value = "";
+      return;
+    } else {
+      // user: open own contact for edit
+      const c = data.contact;
+      // find index in current contacts list
+      const all = await fetch('/api/contacts');
+      const list = await all.json();
+      const idx = list.findIndex(x=>x.id===c.id);
+      if(idx!==-1){
+        contacts = list;
+        renderEditList(contacts);
+        editingIndex = idx;
+        loadContact(idx);
+      } else {
+        // open form with user's data
+        contacts = list;
+        renderEditList(contacts);
+        const found = list.find(x=>x.id===c.id);
+        const indexFound = list.indexOf(found);
+        if(indexFound!==-1) loadContact(indexFound);
+      }
+    }
+  }catch(e){
+    console.error(e);
+    alert('Erro no login');
+  }
+}
+
+function quickFilter(){
+  const query=document.getElementById("quickSearch").value.toLowerCase();
+  const filtered=contacts.filter(c=>c.name.toLowerCase().includes(query));
+  renderEditList(filtered);
+}
+
+// ------------------------ RENDER LIST ------------------------
+function renderEditList(list){ contacts = list || contacts;
+  const editListDiv=document.getElementById("editList");
+  editListDiv.innerHTML="";
+  const isAdmin=list.length===contacts.length;
+  list.forEach(c=>{
+    const btn=document.createElement("button");
+    btn.textContent=c.name;
+    btn.onclick=()=>loadContact(contacts.indexOf(c));
+
+    if(isAdmin){
+      const priInput=document.createElement("input"); priInput.type="number"; priInput.min="0"; priInput.max="10"; priInput.value=c.prioridade||5;
+      priInput.onclick=e=>e.stopPropagation();
+      priInput.onchange=e=>{c.prioridade=parseInt(priInput.value)||0; saveContactsToStorage(); renderEditList(list);};
+      btn.appendChild(priInput);
+
+      const pauseBtn=document.createElement("span");
+      pauseBtn.textContent=c.ativo!==false?"Pausar":"Ativar";
+      pauseBtn.className="delete-btn"; pauseBtn.style.background="orange";
+      pauseBtn.onclick=e=>{e.stopPropagation(); c.ativo=!c.ativo; saveContactsToStorage(); renderEditList(list);};
+      btn.appendChild(pauseBtn);
+
+      const del=document.createElement("span");
+      del.textContent="Excluir"; del.className="delete-btn";
+      del.onclick=e=>{e.stopPropagation(); excluirContatoUsuario(contacts.indexOf(c));};
+      btn.appendChild(del);
+    }
+
+    editListDiv.appendChild(btn);
+  });
+}
+
+// ------------------------ FUNÇÕES AUX ------------------------
+function excluirContatoUsuario(index){
+  if(confirm("Deseja realmente excluir este contato?")){
+    try{
+      const id = contacts[index] && contacts[index].id;
+      if(id){
+        const res = await fetch('/api/contacts/'+id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ masterName: 'pedro', masterPass: 'Pedrokong3535#' }) });
+        if(!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Erro ao excluir');
+        }
+        contacts.splice(index,1);
+        const msgDiv=document.getElementById("msg");
+        msgDiv.textContent="✅ Excluído com sucesso!";
+        msgDiv.style.color="#28a745";
+        msgDiv.classList.remove("hidden");
+        setTimeout(voltar,1500);
+      } else {
+        // fallback: remove locally
+        contacts.splice(index,1);
+        const msgDiv=document.getElementById("msg");
+        msgDiv.textContent="✅ Excluído localmente!";
+        msgDiv.style.color="#28a745";
+        msgDiv.classList.remove("hidden");
+        setTimeout(voltar,1500);
+      }
+    }catch(e){
+      alert('Erro ao excluir: '+e.message);
+    }
+  }
+}
+
+function loadContact(i){
+  editingIndex=i;
+  const c=contacts[i];
+  ["senha","nome","endereco","telefone","email","cidade","link","vaga"].forEach(id=>document.getElementById(id).value=c[id]||"");
+  document.getElementById("form-section").classList.remove("hidden");
+  document.getElementById("edit-login").classList.add("hidden");
+}
+
+// ------------------------ VOLTAR ------------------------
+function voltar(){
+  document.getElementById("form-section").classList.add("hidden");
+  document.getElementById("edit-login").classList.add("hidden");
+  document.getElementById("editList").classList.add("hidden");
+  document.getElementById("text-editor").classList.add("hidden");
+  document.getElementById("gearBtn").classList.add("hidden");
+  document.getElementById("main-section").classList.remove("hidden");
+  editingIndex=null;
+  search();
+}
+
+// ------------------------ EDITAR TEXTOS ------------------------
+document.getElementById("gearBtn").onclick=function(){
+  document.getElementById("edit-login").classList.add("hidden");
+  document.getElementById("text-editor").classList.remove("hidden");
+  document.getElementById("edit-title").value=texts.title;
+  document.getElementById("edit-subtitle").value=texts.subtitle;
+  document.getElementById("edit-btn-cadastrar").value=texts.btnCadastrar;
+  document.getElementById("edit-btn-editar").value=texts.btnEditar;
+  document.getElementById("edit-placeholder-search").value=texts.placeholderSearch;
+  document.getElementById("edit-footer").value=texts.footer;
+}
+
+function salvarTextos(){
+  texts.title=document.getElementById("edit-title").value;
+  texts.subtitle=document.getElementById("edit-subtitle").value;
+  texts.btnCadastrar=document.getElementById("edit-btn-cadastrar").value;
+  texts.btnEditar=document.getElementById("edit-btn-editar").value;
+  texts.placeholderSearch=document.getElementById("edit-placeholder-search").value;
+  texts.footer=document.getElementById("edit-footer").value;
+  saveTextsToStorage();
+  alert("Alterações salvas com sucesso!");
+}
+
+function restaurarPadrao(){
+  texts={...defaultTexts};
+  saveTextsToStorage();
+  document.getElementById("edit-title").value=texts.title;
+  document.getElementById("edit-subtitle").value=texts.subtitle;
+  document.getElementById("edit-btn-cadastrar").value=texts.btnCadastrar;
+  document.getElementById("edit-btn-editar").value=texts.btnEditar;
+  document.getElementById("edit-placeholder-search").value=texts.placeholderSearch;
+  document.getElementById("edit-footer").value=texts.footer;
+  alert("Textos restaurados para padrão!");
+}
+
+function fecharEditor(){
+  document.getElementById("text-editor").classList.add("hidden");
+  document.getElementById("edit-login").classList.remove("hidden");
+}
+
+// ------------------------ INICIALIZAÇÃO ------------------------
+window.onload=()=>{
+  updateSiteTexts();
+  search();
+}
+</script>
+</body>
+</html>
